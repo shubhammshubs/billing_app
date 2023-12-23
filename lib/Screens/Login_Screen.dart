@@ -103,8 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
         title: Text("Sign In"),
         centerTitle: true,
         backgroundColor: Colors.orange,
-        automaticallyImplyLeading: false, // This line removes the back button
-
       ),
       body:
       Center(
@@ -182,6 +180,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                 ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                //   children: [
+                //     const SizedBox(width: 220,),
+                //     GestureDetector(
+                //       onTap: () {
+                //         // Navigator.push(context,
+                //         //     MaterialPageRoute(builder: (context) =>
+                //         //         ForgotPassMobileVerify()));
+                //       },
+                //       child: const Text(
+                //         'Forgot Password?',
+                //         style: TextStyle(
+                //           color: Colors.orange,
+                //           fontSize: 14,
+                //           decoration: TextDecoration.underline, // Add underline decoration here
+                //         ),
+                //       ),
+                //     ),
+                //   ],
+                // ),
                 const SizedBox(height: 30,),
 
                 Padding(

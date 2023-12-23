@@ -186,7 +186,7 @@ class TableDataDisplay {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Table for Invoice ID $latestInvoiceId'),
+            title: Center(child: Text('Invoice')),
             content: SingleChildScrollView(
               child: Column(
                 children: [
