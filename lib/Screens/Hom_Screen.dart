@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'NavBar.dart';
+
 class HomeScreen extends StatefulWidget {
   final String mobileNumber;
 
@@ -24,12 +26,25 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedItemId = "";
   int selectedQuantity = 1;
   String submittedInvoiceId = ""; // Add this line
+  int _serialNumber = 1; // Add this line
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isLoading = false;
 
+
+
+  bool _isMounted = false; // Add this line
 
   @override
   void initState() {
     super.initState();
+    _isMounted = true; // Add this line
     fetchData();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false; // Add this line
+    super.dispose();
   }
   //  To display the items in a dropdownlist from api.
   Future<void> fetchData() async {
@@ -72,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selectedItemId.isNotEmpty) {
       setState(() {
         _items.add({
+          'serial_number': _serialNumber,
           'item_name': selectedItemId,
           'item_price': responseData
               .firstWhere((item) => item['item_name'] == selectedItemId)['item_price'],
@@ -79,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         selectedItemId = "";
         selectedQuantity = 1;
+        _serialNumber++; // Increment serial number for the next row
       });
     }
   }
@@ -116,53 +133,113 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // code to pass the information to the api .
+  // Future<void> submitData() async {
+  //   final latestInvoiceId = await fetchLatestInvoiceId();
+  //   print('Latest Invoice ID: $latestInvoiceId');
+  //
+  //   final apiUrl = 'https://apip.trifrnd.com/Fruits/inv.php?apicall=addinv';
+  //
+  //   for (var item in _items) {
+  //     final response = await http.post(
+  //       Uri.parse(apiUrl),
+  //       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+  //       body: {
+  //         'inv_id': latestInvoiceId,
+  //         'inv_date': getCurrentDate(),
+  //         'item_name': item['item_name'] ?? '',
+  //         'item_price': item['item_price'].toString(),
+  //         'qty': item['quantity'].toString(),
+  //         'item_amt': calculateTotalForItem(item['item_name'], item['quantity']).toString(),
+  //         'bill_amt': calculateGrandTotal().toString(),
+  //       }..removeWhere((key, value) => value == null),
+  //     );
+  //
+  //     print('API Response: ${response.statusCode}');
+  //     print('API Body : ${response.body}');
+  //
+  //
+  //     if (response.statusCode == 200 && response.body == "Invoice Added Successfully.") {
+  //       final snackBar = SnackBar(
+  //         content: Text(
+  //           'Item ${item['item_name']} added to Cart.',
+  //           textAlign: TextAlign.center,
+  //         ),
+  //       );
+  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  //       // Reload the data after successful submission
+  //       fetchData();
+  //     } else {
+  //       print(' ${response.body}');
+  //     }
+  //   }
+  //   submittedInvoiceId = latestInvoiceId; // Store the submitted invoice ID
+  //
+  //   // // THe naviator to refresh the page
+  //   // Navigator.of(context).pushReplacement(
+  //   //   MaterialPageRoute(
+  //   //     builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
+  //   //   ),
+  //   // );
+  // }
+// code to pass the information to the api.
   Future<void> submitData() async {
-    final latestInvoiceId = await fetchLatestInvoiceId();
-    print('Latest Invoice ID: $latestInvoiceId');
+    try {
+      setState(() {
+        _isLoading = true; // Set loading to true when submitting data
+      });
 
-    final apiUrl = 'https://apip.trifrnd.com/Fruits/inv.php?apicall=addinv';
+      final latestInvoiceId = await fetchLatestInvoiceId();
+      print('Latest Invoice ID: $latestInvoiceId');
 
-    for (var item in _items) {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'inv_id': latestInvoiceId,
-          'inv_date': getCurrentDate(),
-          'item_name': item['item_name'] ?? '',
-          'item_price': item['item_price'].toString(),
-          'qty': item['quantity'].toString(),
-          'item_amt': calculateTotalForItem(item['item_name'], item['quantity']).toString(),
-          'bill_amt': calculateGrandTotal().toString(),
-        }..removeWhere((key, value) => value == null),
-      );
+      final apiUrl = 'https://apip.trifrnd.com/Fruits/inv.php?apicall=addinv';
 
-      print('API Response: ${response.statusCode}');
-      print('API Body : ${response.body}');
-
-
-      if (response.statusCode == 200 && response.body == "Invoice Added Successfully.") {
-        final snackBar = SnackBar(
-          content: Text(
-            'Item ${item['item_name']} added to Cart.',
-            textAlign: TextAlign.center,
-          ),
+      for (var item in _items) {
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: {
+            'inv_id': latestInvoiceId,
+            'inv_date': getCurrentDate(),
+            'item_name': item['item_name'] ?? '',
+            'item_price': item['item_price'].toString(),
+            'qty': item['quantity'].toString(),
+            'item_amt': calculateTotalForItem(item['item_name'], item['quantity']).toString(),
+            'bill_amt': calculateGrandTotal().toString(),
+          }..removeWhere((key, value) => value == null),
         );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        // Reload the data after successful submission
-        fetchData();
-      } else {
-        print(' ${response.body}');
-      }
-    }
-    submittedInvoiceId = latestInvoiceId; // Store the submitted invoice ID
 
-    // THe naviator to refresh the page
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
-      ),
-    );
+        print('API Response: ${response.statusCode}');
+        print('API Body : ${response.body}');
+
+        if (response.statusCode == 200 && response.body == "Invoice Added Successfully.") {
+          final snackBar = SnackBar(
+            content: Text(
+              'Item ${item['item_name']} added to Cart.',
+              textAlign: TextAlign.center,
+            ),
+          );
+          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        } else {
+          print(' ${response.body}');
+        }
+      }
+
+      // Clear the _items list after successful submission
+      setState(() {
+        _items.clear();
+      });
+
+      submittedInvoiceId = latestInvoiceId; // Store the submitted invoice ID
+
+      // Reload the data after successful submission
+      fetchData();
+    } catch (e) {
+      print('Error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // Set loading to false when submission is complete
+      });
+    }
   }
 
   // This code is for getting the lettest InvoiceId fro the api to pass into addinv
@@ -183,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
+
   // code to call the Display Table Popup window to display the records
   Future<void> displayTableData() async {
     try {
@@ -192,203 +270,204 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Handle logic after the table data is displayed here
       print("Invoice Displayed Successfully");
+      // // THe naviator to refresh the page
+      // Navigator.of(context).pushReplacement(
+      //   MaterialPageRoute(
+      //     builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
+      //   ),
+      // );
 
     } catch (e) {
       print('Error: $e');
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Billing App"),
-        centerTitle: true,
-        backgroundColor: Colors.orange,
-        automaticallyImplyLeading: false, // This line removes the back button
-
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: ()  async {
-              SharedPreferences preferences = await SharedPreferences.getInstance();
-              preferences.clear();
-              // Add your logout logic here
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) =>
-                  LoginScreen(),
-                  ));
-
+    return MaterialApp(
+      home: Scaffold(
+        key: _scaffoldKey,
+        drawer: NavBar(mobileNumber: widget.mobileNumber,),
+        appBar: AppBar(
+          title: Text("Billing App"),
+          centerTitle: true,
+          backgroundColor: Colors.orange,
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: () {
+              // Replace the following line with the updated code
+              _scaffoldKey.currentState?.openDrawer();
             },
           ),
-        ],
-      ),
-      body:
-      SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  // Dropdown list to dispaly all the items from the items api
-                  Container(
-                    // width: 100, // Set your desired width
-                    height: 50, // Set your desired height
-                    decoration: BoxDecoration(
-                      border: Border.all(), // Add border styling as needed
-                      borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
-                    ),
-                    child: DropdownButton<String>(
-                      value: selectedItemId.isNotEmpty ? selectedItemId : null,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedItemId = newValue!;
-                        });
-                      },
-                      items: responseData
-                          .map<DropdownMenuItem<String>>(
-                            (item) => DropdownMenuItem<String>(
-                          value: item['item_name'],
-                          child: Text(item['item_name']),
-                        ),
-                      )
-                          .toList(),
-                      hint: const Text('Select Item'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(), // Add border styling as needed
-                      borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: decrementQuantity,
-                        ),
-                        Text('$selectedQuantity'),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: incrementQuantity,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    // width: 100, // Set your desired width
-                    height: 50, // Set your desired height
-                    decoration: BoxDecoration(
-                      border: Border.all(), // Add border styling as needed
-                      borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
-                    ),
-                    child: Center(
-                      child: Text(
-                        ' Total:  ${calculateTotalForItem(selectedItemId, selectedQuantity).toStringAsFixed(2)} ',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        body:
+        SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    // Dropdown list to dispaly all the items from the items api
+                    Container(
+                      // width: 100, // Set your desired width
+                      height: 50, // Set your desired height
+                      decoration: BoxDecoration(
+                        border: Border.all(), // Add border styling as needed
+                        borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
+                      ),
+                      child: DropdownButton<String>(
+                        value: selectedItemId.isNotEmpty ? selectedItemId : null,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedItemId = newValue!;
+                          });
+                        },
+                        items: responseData
+                            .map<DropdownMenuItem<String>>(
+                              (item) => DropdownMenuItem<String>(
+                            value: item['item_name'],
+                            child: Text(item['item_name']),
+                          ),
+                        )
+                            .toList(),
+                        hint: const Text('Select Item'),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: addItemToTable,
-                    child: const Text('Add Item'),
-                  ),
-                ],
-              ),
-        
-              const SizedBox(height: 16),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Table(
-                  defaultColumnWidth: const IntrinsicColumnWidth(),
-                  border: TableBorder.all(),
-                  children: [
-                    const TableRow(
-                      children: [
-                        TableCell(child: Center(child: Text('Item Name'))),
-                        TableCell(child: Center(child: Text('Price'))),
-                        TableCell(child: Center(child: Text('Quantity'))),
-                        TableCell(child: Center(child: Text('Total'))),
-                        TableCell(child: Center(child: Text('Remove'))),
-                      ],
-                    ),
-                    for (var item in _items)
-                      TableRow(
+                    const SizedBox(width: 5),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(), // Add border styling as needed
+                        borderRadius: BorderRadius.circular(2.0), // Optional: Add border radius for rounded corners
+                      ),
+                      child: Row(
                         children: [
-                          TableCell(child: Text('  ${item['item_name']}  ')),
-                          TableCell(child: Text('  ${item['item_price']}  ',)),
-                          TableCell(child: Center(child: Text('  ${item['quantity']}  '))),
-                          TableCell(
-                            child: Center(
-                              child: Text(
-                                '  ${calculateTotalForItem(item['item_name'], item['quantity']).toStringAsFixed(2)}  ',
-                              ),
-                            ),
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: decrementQuantity,
                           ),
-                          TableCell(
-                            child: IconButton(
-                              icon: const Icon(Icons.remove_circle_outline_rounded),
-                              color: Colors.red,
-                              onPressed: () {
-                                // Remove the item from the list when the remove icon is tapped
-                                removeItem(item);
-                              },
-                            ),
+                          Text('$selectedQuantity'),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: incrementQuantity,
                           ),
                         ],
                       ),
-        
-                    TableRow(
-        
-                      children: [
-                        const TableCell(child: SizedBox.shrink()),
-                        const TableCell(child: SizedBox.shrink()),
-                        const TableCell(
-                          child: Center(
-                            child: Text(
-                              ' Total:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      // width: 100, // Set your desired width
+                      height: 50, // Set your desired height
+                      decoration: BoxDecoration(
+                        border: Border.all(), // Add border styling as needed
+                        borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
+                      ),
+                      child: Center(
+                        child: Text(
+                          ' Total:  ${calculateTotalForItem(selectedItemId, selectedQuantity).toStringAsFixed(2)} ',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        TableCell(
-                          child: Center(
-                            child: Text(
-                              '${calculateGrandTotal().toStringAsFixed(2)}  ',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        const TableCell(child: SizedBox.shrink()),
-                      ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              // TODO: Demo
-              ElevatedButton(
-                onPressed: () async {
-                  await submitData();
-                  displayTableData();
-                },
-                style: ButtonStyle(
-                  // backgroundColor: MaterialStateProperty.all<Color>(Colors.orange),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: addItemToTable,
+                      child: const Text('Add Item'),
+                    ),
+                  ],
                 ),
-                child: const Text('Submit',),
+          
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Table(
+                    defaultColumnWidth: const IntrinsicColumnWidth(),
+                    border: TableBorder.all(),
+                    children: [
+                      const TableRow(
+                        children: [
+                          TableCell(child: Center(child: Text('Sr. No.'))),
+                          TableCell(child: Center(child: Text('Item Name'))),
+                          TableCell(child: Center(child: Text('Price'))),
+                          TableCell(child: Center(child: Text('Quantity'))),
+                          TableCell(child: Center(child: Text('Total'))),
+                          TableCell(child: Center(child: Text('Remove'))),
+                        ],
+                      ),
+                      for (var item in _items)
+                        TableRow(
+                          children: [
+                            TableCell(child: Center(child: Text(item['serial_number'].toString()))),
+                            TableCell(child: Text('  ${item['item_name']}  ')),
+                            TableCell(child: Text('  ${item['item_price']}  ',)),
+                            TableCell(child: Center(child: Text('  ${item['quantity']}  '))),
+                            TableCell(
+                              child: Center(
+                                child: Text(
+                                  '  ${calculateTotalForItem(item['item_name'], item['quantity']).toStringAsFixed(2)}  ',
+                                ),
+                              ),
+                            ),
+                            TableCell(
+                              child: IconButton(
+                                icon: const Icon(Icons.remove_circle_outline_rounded),
+                                color: Colors.red,
+                                onPressed: () {
+                                  // Remove the item from the list when the remove icon is tapped
+                                  removeItem(item);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+      
+                      TableRow(
+                        children: [
+                          const TableCell(child: Center(child: Text(''))),
+                          const TableCell(child: Center(child: Text(''))),
+                          const TableCell(child: Center(child: Text(''))),
+                          const TableCell(child: Center(child: Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)))),
+                          TableCell(
+                            child: Center(
+                              child: Text(
+                                '${calculateGrandTotal().toStringAsFixed(2)}  ',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          const TableCell(child: Center(child: Text(''))),
+                        ],
+                      ),
+      
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // TODO: Demo
+                ElevatedButton(
+                  onPressed: _isLoading ? null : () async {
+                    await submitData();
+                    displayTableData();
+                  },
+                  style: ButtonStyle(
+                    // backgroundColor: MaterialStateProperty.all<Color>(Colors.orange),
+                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator() // Show loading indicator
+                      : const Text('Submit'),
+                ),
 
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
