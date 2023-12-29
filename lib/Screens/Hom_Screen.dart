@@ -263,7 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => DataDisplayPage(
-              latestInvoiceId: submittedInvoiceId
+              latestInvoiceId: submittedInvoiceId,
+            mobileNumber: widget.mobileNumber,
           ),
         ),
       );
@@ -301,10 +302,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+
+    const double defaultPadding = 16.0;
+    const double defaultMargin = 16.0;
+
+    double responsivePadding = screenWidth * 0.05;
+    double responsiveMargin = screenWidth * 0.05;
+    double responsiveFontSize = screenWidth * 0.04;
+    double containerWidth = screenWidth * 0.8;
+    double containerHeight = screenHeight * 0.3;
+
     return MaterialApp(
       home: Scaffold(
         key: _scaffoldKey,
-        drawer: NavBar(mobileNumber: widget.mobileNumber,),
+        drawer: NavBar(mobileNumber: widget.mobileNumber),
         appBar: AppBar(
           title: Text("Billing App"),
           centerTitle: true,
@@ -313,34 +326,30 @@ class _HomeScreenState extends State<HomeScreen> {
           leading: IconButton(
             icon: Icon(Icons.menu),
             onPressed: () {
-              // Replace the following line with the updated code
               _scaffoldKey.currentState?.openDrawer();
               setState(() {});
-
             },
           ),
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            await fetchData(); // Implement the logic to refresh your data here
+            await fetchData();
           },
           child: SingleChildScrollView(
-            physics: AlwaysScrollableScrollPhysics(), // Added this line
+            physics: AlwaysScrollableScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(responsivePadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      // Dropdown list to dispaly all the items from the items api
                       Container(
-                        // width: 100, // Set your desired width
-                        height: 50, // Set your desired height
+                        height: screenHeight * 0.07,
                         decoration: BoxDecoration(
-                          border: Border.all(), // Add border styling as needed
-                          borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
+                          border: Border.all(),
+                          borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: DropdownButton<String>(
                           value: selectedItemId.isNotEmpty ? selectedItemId : null,
@@ -360,147 +369,140 @@ class _HomeScreenState extends State<HomeScreen> {
                           hint: const Text('Select Item'),
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      SizedBox(width: responsivePadding),
                       Container(
                         decoration: BoxDecoration(
-                          border: Border.all(), // Add border styling as needed
-                          borderRadius: BorderRadius.circular(2.0), // Optional: Add border radius for rounded corners
+                          border: Border.all(),
+                          borderRadius: BorderRadius.circular(2.0),
                         ),
                         child: Row(
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove),
                               onPressed: decrementQuantity,
+                              iconSize: responsiveFontSize,
                             ),
-                            Text('$selectedQuantity'),
+                            Text('$selectedQuantity', style: TextStyle(fontSize: responsiveFontSize)),
                             IconButton(
                               icon: const Icon(Icons.add),
                               onPressed: incrementQuantity,
+                              iconSize: responsiveFontSize,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 5),
-                      Container(
-                        // width: 100, // Set your desired width
-                        height: 50, // Set your desired height
-                        decoration: BoxDecoration(
-                          border: Border.all(), // Add border styling as needed
-                          borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
-                        ),
-                        child: Center(
-                          child: Text(
-                            ' Total:  ${calculateTotalForItem(selectedItemId, selectedQuantity).toStringAsFixed(2)} ',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: responsivePadding),
+                  Container(
+                    height: screenHeight * 0.07,
+                    decoration: BoxDecoration(
+                      border: Border.all(),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Total: ${calculateTotalForItem(selectedItemId, selectedQuantity).toStringAsFixed(2)}',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: responsiveFontSize),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: responsivePadding),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       ElevatedButton(
                         onPressed: addItemToTable,
-                        child: const Text('Add Item'),
+                        child: Text('Add Item', style: TextStyle(fontSize: responsiveFontSize)),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: responsivePadding),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Table(
-                      defaultColumnWidth: const IntrinsicColumnWidth(),
+                      defaultColumnWidth: IntrinsicColumnWidth(),
                       border: TableBorder.all(),
                       children: [
-                        const TableRow(
+                        TableRow(
                           children: [
-                            TableCell(child: Center(child: Text('Sr. No.'))),
-                            TableCell(child: Center(child: Text('Item Name'))),
-                            TableCell(child: Center(child: Text('Price'))),
-                            TableCell(child: Center(child: Text('Quantity'))),
-                            TableCell(child: Center(child: Text('Total'))),
-                            TableCell(child: Center(child: Text('Remove'))),
+                            TableCell(child: Text('Sr.\nNo.', style: TextStyle(fontSize: responsiveFontSize))),
+                            TableCell(child: Center(child: Text('Item\nName', style: TextStyle(fontSize: responsiveFontSize)))),
+                            TableCell(child: Center(child: Text('Price', style: TextStyle(fontSize: responsiveFontSize)))),
+                            TableCell(child: Center(child: Text('Quantity', style: TextStyle(fontSize: responsiveFontSize)))),
+                            TableCell(child: Center(child: Text('Total', style: TextStyle(fontSize: responsiveFontSize)))),
+                            TableCell(child: Center(child: Text('Remove', style: TextStyle(fontSize: responsiveFontSize)))),
                           ],
                         ),
                         for (var item in _items)
                           TableRow(
                             children: [
-                              TableCell(child: Center(child: Text(item['serial_number'].toString()))),
-                              TableCell(child: Text('  ${item['item_name']}  ')),
-                              TableCell(child: Text('  ${item['item_price']}  ',)),
-                              TableCell(child: Center(child: Text('  ${item['quantity']}  '))),
+                              TableCell(child: Center(child: Text(item['serial_number'].toString(), style: TextStyle(fontSize: responsiveFontSize)))),
+                              TableCell(child: Text(' ${item['item_name']} ', style: TextStyle(fontSize: responsiveFontSize))),
+                              TableCell(child: Text(' ${item['item_price']} ', style: TextStyle(fontSize: responsiveFontSize))),
+                              TableCell(child: Center(child: Text(' ${item['quantity']} ', style: TextStyle(fontSize: responsiveFontSize)))),
                               TableCell(
                                 child: Center(
                                   child: Text(
-                                    '  ${calculateTotalForItem(item['item_name'], item['quantity']).toStringAsFixed(2)}  ',
+                                    ' ${calculateTotalForItem(item['item_name'], item['quantity']).toStringAsFixed(2)} ',
+                                    style: TextStyle(fontSize: responsiveFontSize),
                                   ),
                                 ),
                               ),
                               TableCell(
                                 child: IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline_rounded),
+                                  icon: Icon(Icons.remove_circle_outline_rounded),
                                   color: Colors.red,
                                   onPressed: () {
-                                    // Remove the item from the list when the remove icon is tapped
                                     removeItem(item);
                                   },
                                 ),
                               ),
                             ],
                           ),
-
                         TableRow(
                           children: [
-                            const TableCell(child: Center(child: Text(''))),
-                            const TableCell(child: Center(child: Text(''))),
-                            const TableCell(child: Center(child: Text(''))),
-                            const TableCell(child: Center(child: Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)))),
+                            TableCell(child: Center(child: Text(''))),
+                            TableCell(child: Center(child: Text(''))),
+                            TableCell(child: Center(child: Text(''))),
+                            TableCell(
+                              child: Center(
+                                child: Text(
+                                  'Total:',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: responsiveFontSize),
+                                ),
+                              ),
+                            ),
                             TableCell(
                               child: Center(
                                 child: Text(
                                   '${calculateGrandTotal().toStringAsFixed(2)}  ',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: responsiveFontSize),
                                 ),
                               ),
                             ),
-                            const TableCell(child: Center(child: Text(''))),
+                            TableCell(child: Center(child: Text(''))),
                           ],
                         ),
-
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // TODO: Demo
+                  SizedBox(height: responsivePadding),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : () async {
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
                       await submitData();
-                      // displayTableData();
-                      // final latestInvoiceId = await fetchLatestInvoiceId();
-
-                      // Rest of your existing code...
-
-                      // Navigate to TableDataDisplayPage after successful submission
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //     builder: (context) => DataDisplayPage(
-                      //         latestInvoiceId: submittedInvoiceId
-                      //     ),
-                      //   ),
-                      // );
                     },
                     style: ButtonStyle(
                       // backgroundColor: MaterialStateProperty.all<Color>(Colors.orange),
                     ),
                     child: _isLoading
-                        ? CircularProgressIndicator() // Show loading indicator
-                        : const Text('Submit'),
+                        ? CircularProgressIndicator()
+                        : Text('Submit', style: TextStyle(fontSize: responsiveFontSize)),
                   ),
-
                 ],
               ),
             ),
@@ -511,25 +513,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// code to call the Display Table Popup window to display the records
-// Future<void> displayTableData() async {
-//   try {
-//     final latestInvoiceId = submittedInvoiceId;
-//
-//     await TableDataDisplay.displayTableData(context, latestInvoiceId);
-//
-//     // Handle logic after the table data is displayed here
-//     print("Invoice Displayed Successfully");
-//     // // THe naviator to refresh the page
-//     // Navigator.of(context).pushReplacement(
-//     //   MaterialPageRoute(
-//     //     builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
-//     //   ),
-//     // );
-//
-//   } catch (e) {
-//     print('Error: $e');
-//   }
-// }
+
 
 

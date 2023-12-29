@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'Login_Screen.dart';
+
 class NavBar extends StatefulWidget {
   final String mobileNumber;
 
@@ -137,6 +141,16 @@ class _NavBarState extends State<NavBar> {
           title: Text("Log Out"),
           onTap: () async {
             // Handle tap
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.clear();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LoginScreen(
+                    // latestInvoiceId: submittedInvoiceId
+                ),
+              ),
+            );
           },
         )
       ],
