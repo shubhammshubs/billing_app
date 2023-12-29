@@ -39,10 +39,10 @@ dependencies:
   http: ^1.1.0
   fluttertoast: ^8.2.4
   font_awesome_flutter: ^10.5.0
-  bluetooth_print: ^4.3.0
-  permission_handler: ^11.1.0
-  flutter_blue_plus: ^1.31.3
-
+  bluetooth_print:
+  permission_handler:
+  bluetooth_enable_fork: ^0.1.6
+  liquid_pull_to_refresh: ^3.0.1
 
 dev_dependencies:
   flutter_test:

@@ -126,7 +126,7 @@ class TableDataDisplay {
             actions: <Widget>[
               ElevatedButton(
                 onPressed: () {
-                  Navigator.push(context, 
+                  Navigator.push(context,
                   MaterialPageRoute(builder: (_) => PrintPage(data: tableData)));
                 },
                 child: const Text('Print'),

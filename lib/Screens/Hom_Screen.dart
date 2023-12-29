@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'package:billing_app/API/Popup_Item_List_API.dart';
 import 'package:billing_app/Screens/Login_Screen.dart';
+import 'package:bluetooth_enable_fork/bluetooth_enable_fork.dart';
+import 'package:bluetooth_print/bluetooth_print.dart';
+import 'package:bluetooth_print/bluetooth_print_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'NavBar.dart';
+import 'TableDataDisplayPage.dart';
 
 class HomeScreen extends StatefulWidget {
   final String mobileNumber;
@@ -31,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
 
 
+  BluetoothPrint bluetoothPrint = BluetoothPrint.instance;
+
+  bool _loading = false;
 
   bool _isMounted = false; // Add this line
 
@@ -38,9 +46,78 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _isMounted = true; // Add this line
+    _handleBluetoothPermission();
+
     fetchData();
   }
+  Future<void> _handleBluetoothPermission() async {
+    var bluetoothPermissionStatus = await Permission.bluetooth.request();
+    var bluetoothScanPermissionStatus =
+    await Permission.bluetoothScan.request();
 
+    if (bluetoothPermissionStatus.isGranted &&
+        bluetoothScanPermissionStatus.isGranted) {
+      print("Bluetooth Permission Granted");
+      await _checkBluetoothStatus();
+    } else {
+      print("Bluetooth Permission Failed");
+    }
+  }
+
+  Future<void> _checkBluetoothStatus() async {
+    bool isBluetoothOn =
+    await BluetoothEnable.enableBluetooth.then((result) async {
+      print("Bluetooth IS On Stage one");
+      await _connectToBluetoothPrinter();
+      return result == "true";
+    });
+
+    if (isBluetoothOn) {
+      print("Bluetooth IS On");
+      await _connectToBluetoothPrinter();
+    } else {
+      print("Bluetooth IS Off");
+    }
+  }
+
+  Future<void> _connectToBluetoothPrinter() async {
+    try {
+      setState(() {
+        _loading = true;
+      });
+
+      String printerName = "BlueTooth Printer";
+      String printerAddress = "DC:0D:30:CA:34:E6";
+
+      BluetoothDevice device = BluetoothDevice();
+      device.name = printerName;
+      device.address = printerAddress;
+
+      print('Selected Bluetooth Device: ${device.name ?? 'Unknown'}');
+
+      if (await bluetoothPrint.isConnected == true) {
+        print('Already connected to ${device.name}');
+      } else {
+        await bluetoothPrint.connect(device);
+
+        if (bluetoothPrint.state == BluetoothPrint.CONNECTED) {
+          print('Connected to ${device.name} successfully.');
+        } else {
+          print('Connection failed. State: ${bluetoothPrint.state}');
+          return;
+        }
+      }
+
+      print('Bluetooth connection successful. You can start printing or perform other tasks.');
+    } catch (e, stackTrace) {
+      print('Bluetooth connection error: $e');
+      print('Stack trace: $stackTrace');
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
   @override
   void dispose() {
     _isMounted = false; // Add this line
@@ -132,56 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return formattedDate;
   }
 
-  // code to pass the information to the api .
-  // Future<void> submitData() async {
-  //   final latestInvoiceId = await fetchLatestInvoiceId();
-  //   print('Latest Invoice ID: $latestInvoiceId');
-  //
-  //   final apiUrl = 'https://apip.trifrnd.com/Fruits/inv.php?apicall=addinv';
-  //
-  //   for (var item in _items) {
-  //     final response = await http.post(
-  //       Uri.parse(apiUrl),
-  //       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-  //       body: {
-  //         'inv_id': latestInvoiceId,
-  //         'inv_date': getCurrentDate(),
-  //         'item_name': item['item_name'] ?? '',
-  //         'item_price': item['item_price'].toString(),
-  //         'qty': item['quantity'].toString(),
-  //         'item_amt': calculateTotalForItem(item['item_name'], item['quantity']).toString(),
-  //         'bill_amt': calculateGrandTotal().toString(),
-  //       }..removeWhere((key, value) => value == null),
-  //     );
-  //
-  //     print('API Response: ${response.statusCode}');
-  //     print('API Body : ${response.body}');
-  //
-  //
-  //     if (response.statusCode == 200 && response.body == "Invoice Added Successfully.") {
-  //       final snackBar = SnackBar(
-  //         content: Text(
-  //           'Item ${item['item_name']} added to Cart.',
-  //           textAlign: TextAlign.center,
-  //         ),
-  //       );
-  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //       // Reload the data after successful submission
-  //       fetchData();
-  //     } else {
-  //       print(' ${response.body}');
-  //     }
-  //   }
-  //   submittedInvoiceId = latestInvoiceId; // Store the submitted invoice ID
-  //
-  //   // // THe naviator to refresh the page
-  //   // Navigator.of(context).pushReplacement(
-  //   //   MaterialPageRoute(
-  //   //     builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
-  //   //   ),
-  //   // );
-  // }
-// code to pass the information to the api.
   Future<void> submitData() async {
     try {
       setState(() {
@@ -211,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
         print('API Response: ${response.statusCode}');
         print('API Body : ${response.body}');
 
-        if (response.statusCode == 200 && response.body == "Invoice Added Successfully.") {
+        if (response.body == "Invoice Added Successfully.") {
           final snackBar = SnackBar(
             content: Text(
               'Item ${item['item_name']} added to Cart.',
@@ -219,8 +246,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
         } else {
           print(' ${response.body}');
+
         }
       }
 
@@ -230,7 +259,14 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       submittedInvoiceId = latestInvoiceId; // Store the submitted invoice ID
-
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DataDisplayPage(
+              latestInvoiceId: submittedInvoiceId
+          ),
+        ),
+      );
       // Reload the data after successful submission
       fetchData();
     } catch (e) {
@@ -261,26 +297,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
-  // code to call the Display Table Popup window to display the records
-  Future<void> displayTableData() async {
-    try {
-      final latestInvoiceId = submittedInvoiceId;
-
-      await TableDataDisplay.displayTableData(context, latestInvoiceId);
-
-      // Handle logic after the table data is displayed here
-      print("Invoice Displayed Successfully");
-      // // THe naviator to refresh the page
-      // Navigator.of(context).pushReplacement(
-      //   MaterialPageRoute(
-      //     builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
-      //   ),
-      // );
-
-    } catch (e) {
-      print('Error: $e');
-    }
-  }
 
 
   @override
@@ -299,174 +315,194 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               // Replace the following line with the updated code
               _scaffoldKey.currentState?.openDrawer();
+              setState(() {});
+
             },
           ),
         ),
-        body:
-        SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    // Dropdown list to dispaly all the items from the items api
-                    Container(
-                      // width: 100, // Set your desired width
-                      height: 50, // Set your desired height
-                      decoration: BoxDecoration(
-                        border: Border.all(), // Add border styling as needed
-                        borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
-                      ),
-                      child: DropdownButton<String>(
-                        value: selectedItemId.isNotEmpty ? selectedItemId : null,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            selectedItemId = newValue!;
-                          });
-                        },
-                        items: responseData
-                            .map<DropdownMenuItem<String>>(
-                              (item) => DropdownMenuItem<String>(
-                            value: item['item_name'],
-                            child: Text(item['item_name']),
-                          ),
-                        )
-                            .toList(),
-                        hint: const Text('Select Item'),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(), // Add border styling as needed
-                        borderRadius: BorderRadius.circular(2.0), // Optional: Add border radius for rounded corners
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove),
-                            onPressed: decrementQuantity,
-                          ),
-                          Text('$selectedQuantity'),
-                          IconButton(
-                            icon: const Icon(Icons.add),
-                            onPressed: incrementQuantity,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Container(
-                      // width: 100, // Set your desired width
-                      height: 50, // Set your desired height
-                      decoration: BoxDecoration(
-                        border: Border.all(), // Add border styling as needed
-                        borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
-                      ),
-                      child: Center(
-                        child: Text(
-                          ' Total:  ${calculateTotalForItem(selectedItemId, selectedQuantity).toStringAsFixed(2)} ',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            await fetchData(); // Implement the logic to refresh your data here
+          },
+          child: SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(), // Added this line
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      // Dropdown list to dispaly all the items from the items api
+                      Container(
+                        // width: 100, // Set your desired width
+                        height: 50, // Set your desired height
+                        decoration: BoxDecoration(
+                          border: Border.all(), // Add border styling as needed
+                          borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
+                        ),
+                        child: DropdownButton<String>(
+                          value: selectedItemId.isNotEmpty ? selectedItemId : null,
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              selectedItemId = newValue!;
+                            });
+                          },
+                          items: responseData
+                              .map<DropdownMenuItem<String>>(
+                                (item) => DropdownMenuItem<String>(
+                              value: item['item_name'],
+                              child: Text(item['item_name']),
+                            ),
+                          )
+                              .toList(),
+                          hint: const Text('Select Item'),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: addItemToTable,
-                      child: const Text('Add Item'),
-                    ),
-                  ],
-                ),
-          
-                const SizedBox(height: 16),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Table(
-                    defaultColumnWidth: const IntrinsicColumnWidth(),
-                    border: TableBorder.all(),
-                    children: [
-                      const TableRow(
-                        children: [
-                          TableCell(child: Center(child: Text('Sr. No.'))),
-                          TableCell(child: Center(child: Text('Item Name'))),
-                          TableCell(child: Center(child: Text('Price'))),
-                          TableCell(child: Center(child: Text('Quantity'))),
-                          TableCell(child: Center(child: Text('Total'))),
-                          TableCell(child: Center(child: Text('Remove'))),
-                        ],
-                      ),
-                      for (var item in _items)
-                        TableRow(
+                      const SizedBox(width: 5),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(), // Add border styling as needed
+                          borderRadius: BorderRadius.circular(2.0), // Optional: Add border radius for rounded corners
+                        ),
+                        child: Row(
                           children: [
-                            TableCell(child: Center(child: Text(item['serial_number'].toString()))),
-                            TableCell(child: Text('  ${item['item_name']}  ')),
-                            TableCell(child: Text('  ${item['item_price']}  ',)),
-                            TableCell(child: Center(child: Text('  ${item['quantity']}  '))),
-                            TableCell(
-                              child: Center(
-                                child: Text(
-                                  '  ${calculateTotalForItem(item['item_name'], item['quantity']).toStringAsFixed(2)}  ',
-                                ),
-                              ),
+                            IconButton(
+                              icon: const Icon(Icons.remove),
+                              onPressed: decrementQuantity,
                             ),
-                            TableCell(
-                              child: IconButton(
-                                icon: const Icon(Icons.remove_circle_outline_rounded),
-                                color: Colors.red,
-                                onPressed: () {
-                                  // Remove the item from the list when the remove icon is tapped
-                                  removeItem(item);
-                                },
-                              ),
+                            Text('$selectedQuantity'),
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: incrementQuantity,
                             ),
                           ],
                         ),
-      
-                      TableRow(
-                        children: [
-                          const TableCell(child: Center(child: Text(''))),
-                          const TableCell(child: Center(child: Text(''))),
-                          const TableCell(child: Center(child: Text(''))),
-                          const TableCell(child: Center(child: Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)))),
-                          TableCell(
-                            child: Center(
-                              child: Text(
-                                '${calculateGrandTotal().toStringAsFixed(2)}  ',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          const TableCell(child: Center(child: Text(''))),
-                        ],
                       ),
-      
+                      const SizedBox(width: 5),
+                      Container(
+                        // width: 100, // Set your desired width
+                        height: 50, // Set your desired height
+                        decoration: BoxDecoration(
+                          border: Border.all(), // Add border styling as needed
+                          borderRadius: BorderRadius.circular(8.0), // Optional: Add border radius for rounded corners
+                        ),
+                        child: Center(
+                          child: Text(
+                            ' Total:  ${calculateTotalForItem(selectedItemId, selectedQuantity).toStringAsFixed(2)} ',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                // TODO: Demo
-                ElevatedButton(
-                  onPressed: _isLoading ? null : () async {
-                    await submitData();
-                    displayTableData();
-                  },
-                  style: ButtonStyle(
-                    // backgroundColor: MaterialStateProperty.all<Color>(Colors.orange),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: addItemToTable,
+                        child: const Text('Add Item'),
+                      ),
+                    ],
                   ),
-                  child: _isLoading
-                      ? CircularProgressIndicator() // Show loading indicator
-                      : const Text('Submit'),
-                ),
 
-              ],
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Table(
+                      defaultColumnWidth: const IntrinsicColumnWidth(),
+                      border: TableBorder.all(),
+                      children: [
+                        const TableRow(
+                          children: [
+                            TableCell(child: Center(child: Text('Sr. No.'))),
+                            TableCell(child: Center(child: Text('Item Name'))),
+                            TableCell(child: Center(child: Text('Price'))),
+                            TableCell(child: Center(child: Text('Quantity'))),
+                            TableCell(child: Center(child: Text('Total'))),
+                            TableCell(child: Center(child: Text('Remove'))),
+                          ],
+                        ),
+                        for (var item in _items)
+                          TableRow(
+                            children: [
+                              TableCell(child: Center(child: Text(item['serial_number'].toString()))),
+                              TableCell(child: Text('  ${item['item_name']}  ')),
+                              TableCell(child: Text('  ${item['item_price']}  ',)),
+                              TableCell(child: Center(child: Text('  ${item['quantity']}  '))),
+                              TableCell(
+                                child: Center(
+                                  child: Text(
+                                    '  ${calculateTotalForItem(item['item_name'], item['quantity']).toStringAsFixed(2)}  ',
+                                  ),
+                                ),
+                              ),
+                              TableCell(
+                                child: IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline_rounded),
+                                  color: Colors.red,
+                                  onPressed: () {
+                                    // Remove the item from the list when the remove icon is tapped
+                                    removeItem(item);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+
+                        TableRow(
+                          children: [
+                            const TableCell(child: Center(child: Text(''))),
+                            const TableCell(child: Center(child: Text(''))),
+                            const TableCell(child: Center(child: Text(''))),
+                            const TableCell(child: Center(child: Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)))),
+                            TableCell(
+                              child: Center(
+                                child: Text(
+                                  '${calculateGrandTotal().toStringAsFixed(2)}  ',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const TableCell(child: Center(child: Text(''))),
+                          ],
+                        ),
+
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // TODO: Demo
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : () async {
+                      await submitData();
+                      // displayTableData();
+                      // final latestInvoiceId = await fetchLatestInvoiceId();
+
+                      // Rest of your existing code...
+
+                      // Navigate to TableDataDisplayPage after successful submission
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (context) => DataDisplayPage(
+                      //         latestInvoiceId: submittedInvoiceId
+                      //     ),
+                      //   ),
+                      // );
+                    },
+                    style: ButtonStyle(
+                      // backgroundColor: MaterialStateProperty.all<Color>(Colors.orange),
+                    ),
+                    child: _isLoading
+                        ? CircularProgressIndicator() // Show loading indicator
+                        : const Text('Submit'),
+                  ),
+
+                ],
+              ),
             ),
           ),
         ),
@@ -474,4 +510,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+// code to call the Display Table Popup window to display the records
+// Future<void> displayTableData() async {
+//   try {
+//     final latestInvoiceId = submittedInvoiceId;
+//
+//     await TableDataDisplay.displayTableData(context, latestInvoiceId);
+//
+//     // Handle logic after the table data is displayed here
+//     print("Invoice Displayed Successfully");
+//     // // THe naviator to refresh the page
+//     // Navigator.of(context).pushReplacement(
+//     //   MaterialPageRoute(
+//     //     builder: (context) => HomeScreen(mobileNumber: widget.mobileNumber),
+//     //   ),
+//     // );
+//
+//   } catch (e) {
+//     print('Error: $e');
+//   }
+// }
+
 
